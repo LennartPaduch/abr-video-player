@@ -1,0 +1,18 @@
+{
+  "name": "abr-streaming-video-player",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "npm run compile && npm run copy-assets && npm run update-paths",
+    "compile": "tsc",
+    "copy-assets": "cp -r media dist/media && cp css/output.css dist/output.css && cp src/index.html dist/index.html && cp -r bif dist/bif",
+    "update-paths": "sed -i.bak 's|../css/output.css|./output.css|g; s|../dist/script.js|./script.js|g' dist/index.html && rm -f dist/index.html.bak"
+  },
+  "devDependencies": {
+    "@types/chart.js": "^2.9.41",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}

@@ -1,0 +1,348 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgc3R5bGU9ImZpbGw6IzBEMUIyQSIvPjxwb2x5Z29uIHBvaW50cz0iMjIsMTYgMjIsNDggNDYsMzIiIHN0eWxlPSJmaWxsOiNGRkZGRkYiLz48L3N2Zz4=">
+
+  <style>
+    html {
+      height: 100%;
+      margin: 0;
+    }
+
+    /* Hide desktop-only elements on mobile */
+    @media (max-width: 768px) {
+      .desktop-only {
+        display: none !important;
+      }
+    }
+
+    /* Hide mobile-only elements on desktop */
+    @media (min-width: 769px) {
+      .mobile-only {
+        display: none !important;
+      }
+    }
+
+    /* Custom tap highlight for mobile */
+    @media (max-width: 768px) {
+
+      button,
+      .tap-target {
+        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+
+    #video {
+      -webkit-transform: translate3d(0, 0, 0);
+      transform: translate3d(0, 0, 0);
+      will-change: transform;
+    }
+  </style>
+  <link href="../css/output.css" rel="stylesheet">
+</head>
+
+<body class="bg-black h-full">
+  <div id="videoPlayer" class="relative text-white h-full overflow-clip">
+    <video id="video" class="h-full w-full touch-manipulation select-none" playsinline></video>
+
+    <!-- Mobile Jump Controls Overlay -->
+    <div class="mobile-only absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+      <div class="relative w-full max-w-[22rem] flex items-center justify-between px-8">
+        <button id="mobile-jmp-backwards-btn"
+          class="pointer-events-auto flex items-center justify-center relative text-white w-16 h-16 rounded-full bg-black/50 transition-all active:scale-95 active:bg-black/70"
+          type="button" aria-label="Rewind 10 seconds">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 17l-5-5 5-5" />
+            <path d="M18 17l-5-5 5-5" />
+          </svg>
+        </button>
+
+        <button id="mobile-jmp-forward-btn"
+          class="pointer-events-auto flex items-center justify-center relative text-white w-16 h-16 rounded-full bg-black/50 transition-all active:scale-95 active:bg-black/70"
+          type="button" aria-label="Forward 10 seconds">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 17l5-5-5-5" />
+            <path d="M6 17l5-5-5-5" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Replay -->
+    <button id="replay-btn"
+      class="hidden hover:scale-110 active:scale-95 w-12 h-12 items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
+      type="button" aria-label="Replay video">
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <path d="M3 3v5h5" />
+        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+        <path d="M21 21v-5h-5" />
+      </svg>
+    </button>
+    <!-- Main Controls -->
+    <div id="controls" class="absolute bottom-0 left-0 z-40 w-full md:h-28 h-20 flex-col opacity-0 flex bg-black/35">
+      <!-- Timebar -->
+      <div id="timebar-wrapper" class="relative w-full flex justify-between gap-2 px-2 md:px-0">
+        <div id="actualBar"
+          class="flex-grow h-[0.7rem] md:h-[0.7rem]  hover:cursor-pointer relative bg-[rgb(126,126,126)] flex items-center tap-target">
+          <div id="scrubber-btn"
+            class="absolute rounded-full md:w-[1.25rem] md:h-[1.25rem] w-[1rem] h-[1rem] bg-[rgb(255,0,0)] left-0 z-40">
+          </div>
+          <div id="timebar" class="w-full h-full bg-[rgb(255,0,0)] justify-end origin-left z-40 scale-x-0">
+          </div>
+          <div id="buffered-amount" class="absolute w-full h-full bg-[rgb(206,206,206)] origin-left scale-x-0"></div>
+        </div>
+        <span id="time-remaining" class="text-sm md:text-base"></span>
+        <div id="seek-preview-wrapper" class="absolute top-[-170px] flex-col w-56 flex left-0">
+          <img alt="" id="seek-preview-img">
+          <div id="seek-preview-time" class="text-xl w-full bg-gray-700 text-center"></div>
+        </div>
+      </div>
+
+      <!-- Controls Row -->
+      <div class="flex justify-between flex-grow bg-opacity-0 text-2xl px-2">
+        <!-- Left side controls -->
+        <div class="flex gap-2 md:gap-4 items-center flex-1">
+          <button id="pause-play-btn" class="hover:scale-110 active:scale-95 w-12 h-12 flex items-center justify-center"
+            type="button"></button>
+
+          <!-- Desktop jump buttons -->
+          <div class="desktop-only flex gap-2">
+            <button id="jmp-backwards-btn"
+              class="flex items-center justify-center relative text-white w-12 h-12 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              type="button" aria-label="Rewind 10 seconds">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 17l-5-5 5-5" />
+                <path d="M18 17l-5-5 5-5" />
+              </svg>
+              <span class="absolute text-xs font-semibold mt-6">10</span>
+            </button>
+
+            <button id="jmp-forward-btn"
+              class="flex items-center justify-center relative text-white w-12 h-12 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              type="button" aria-label="Forward 10 seconds">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M13 17l5-5-5-5" />
+                <path d="M6 17l5-5-5-5" />
+              </svg>
+              <span class="absolute text-xs font-semibold mt-6">10</span>
+            </button>
+          </div>
+
+          <!-- Desktop Volume controls -->
+          <div class="desktop-only relative flex items-center justify-center py-4">
+            <button id="volume-btn"
+              class="relative flex items-center justify-center text-white w-12 h-12 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              type="button" aria-label="Volume">
+              <svg id="volume-icon" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              </svg>
+              <svg id="muted-icon" class="hidden" xmlns="http://www.w3.org/2000/svg" width="28" height="28"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <line x1="23" y1="9" x2="17" y2="15" />
+                <line x1="17" y1="9" x2="23" y2="15" />
+              </svg>
+            </button>
+
+            <div id="volume-bar-wrapper"
+              class="relative w-40 h-full flex justify-between gap-2 items-center cursor-pointer group">
+              <div id="volume-bar"
+                class="w-40 h-[0.7rem] relative bg-gray-500/60 flex items-center rounded transition-all duration-200">
+                <div id="volume-scrubber-btn" class="absolute rounded-full w-[1.25rem] h-[1.25rem] bg-white left-0 z-40 shadow-lg 
+                  group-hover:shadow-blue-500/30 group-hover:shadow-lg
+                  transition-all duration-150 ease-out">
+                </div>
+                <div id="current-volume-bar" class="w-full h-full bg-white justify-start origin-left z-30 scale-x-0 
+                  transition-transform duration-100 ease-out rounded">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Title (center) - Hidden on mobile -->
+        <div class="self-center hidden md:block flex-1 relative">
+          <div class="flex gap-2">
+            <div id="video-title" class="flex-1 text-end"></div>
+            <button id="credits" class="flex-1 text-start relative">©</button>
+          </div>
+        </div>
+
+        <!-- Right side controls -->
+        <div id="right-side-controls-wrapper" class="flex gap-1 items-center flex-1 justify-end">
+          <!-- Mobile Credits Button -->
+          <button id="mobile-credits"
+            class="mobile-only control-button text-white p-2 cursor-pointer focus:outline-none flex items-center justify-center transition-all duration-200 active:scale-95"
+            aria-label="Credits">
+            ©
+          </button>
+          <!-- Mobile Settings Button -->
+          <button id="mobile-settings-btn"
+            class="mobile-only control-button text-white p-2 cursor-pointer focus:outline-none flex items-center justify-center transition-all duration-200 active:scale-95"
+            aria-label="Settings">
+            <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+
+          <!-- Desktop Resolution quality button -->
+          <div id="playback-res-btn"
+            class="desktop-only control-button text-white p-2 cursor-pointer focus:outline-none flex items-center justify-center transition-all duration-200 hover:text-gray-300 hover:scale-125"
+            aria-label="Resolution settings">
+            <svg viewBox="0 0 24 24" class="w-8 h-8">
+              <rect x="4" y="14" width="4" height="6" rx="1" fill="currentColor" />
+              <rect x="10" y="10" width="4" height="10" rx="1" fill="currentColor" />
+              <rect x="16" y="6" width="4" height="14" rx="1" fill="currentColor" />
+            </svg>
+          </div>
+
+          <!-- Desktop Playback speed button -->
+          <div id="playbackRate-btn"
+            class="desktop-only control-button text-white p-2 cursor-pointer focus:outline-none flex items-center justify-center transition-all duration-75 hover:text-gray-300 hover:scale-125"
+            aria-label="Playback speed">
+            <svg viewBox="0 0 24 24" class="w-8 h-8">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none" />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+              <line x1="12" y1="12" x2="16" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </div>
+
+          <!-- Fullscreen button -->
+          <div id="fullscreen-btn"
+            class="control-button text-white p-2 cursor-pointer focus:outline-none flex items-center justify-center transition-all duration-200 hover:text-gray-300 hover:scale-125 active:scale-95"
+            aria-label="Full screen">
+            <svg viewBox="0 0 24 24" class="w-8 h-6">
+              <path fill="none" stroke="currentColor" stroke-width="2"
+                d="M4,8 L4,4 L8,4 M16,4 L20,4 L20,8 M4,16 L4,20 L8,20 M16,20 L20,20 L20,16"></path>
+            </svg>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Mobile Settings Menu -->
+      <div id="mobile-settings-menu"
+        class="mobile-only hidden absolute bottom-20 right-2 bg-black/95 rounded-lg shadow-lg p-4 min-w-[280px] z-50">
+        <div class="space-y-4">
+          <!-- Quality Section -->
+          <div>
+            <h3 class="text-white text-sm font-semibold mb-2">Quality</h3>
+            <div id="mobile-quality-options" class="space-y-2">
+              <!-- Quality options will be populated here -->
+            </div>
+          </div>
+
+          <!-- Speed Section -->
+          <div class="border-t border-gray-700 pt-4">
+            <h3 class="text-white text-sm font-semibold mb-2">Playback Speed</h3>
+            <div id="mobile-speed-options" class="grid grid-cols-3 gap-2">
+              <button class="mobile-speed-option text-sm py-2 px-3 rounded bg-gray-800 text-gray-400 active:bg-gray-700"
+                data-speed="0.5">0.5x</button>
+              <button class="mobile-speed-option text-sm py-2 px-3 rounded bg-gray-800 text-gray-400 active:bg-gray-700"
+                data-speed="0.75">0.75x</button>
+              <button class="mobile-speed-option text-sm py-2 px-3 rounded bg-white text-black font-semibold"
+                data-speed="1">1x</button>
+              <button class="mobile-speed-option text-sm py-2 px-3 rounded bg-gray-800 text-gray-400 active:bg-gray-700"
+                data-speed="1.25">1.25x</button>
+              <button class="mobile-speed-option text-sm py-2 px-3 rounded bg-gray-800 text-gray-400 active:bg-gray-700"
+                data-speed="1.5">1.5x</button>
+              <button class="mobile-speed-option text-sm py-2 px-3 rounded bg-gray-800 text-gray-400 active:bg-gray-700"
+                data-speed="2">2x</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop Playback Speed Selector -->
+      <div id="playbackRate-selector-wrapper"
+        class="desktop-only hidden absolute bottom-20 right-3 bg-black bg-opacity-90 rounded shadow-lg p-6 min-w-[380px] z-50">
+        <div class="text-white text-base mb-6">Playback Speed</div>
+        <div class="relative mt-6 mb-6">
+          <div class="w-full h-0.5 absolute flex justify-center" style="top: 7px;">
+            <div class="w-4/5 h-full bg-gray-600"></div>
+          </div>
+          <div class="flex justify-between relative w-full">
+            <div
+              class="playback-speed-item group flex flex-col items-center cursor-pointer w-1/5 text-center transition-transform duration-75 hover:scale-105"
+              role="button" tabindex="0" data-speed="0.5">
+              <div
+                class="speed-circle w-4 h-4 rounded-full bg-gray-500 relative transition-all duration-200 group-hover:bg-gray-400">
+              </div>
+              <div
+                class="speed-label text-sm text-gray-400 mt-4 w-full transition-colors duration-200 group-hover:text-gray-300">
+                0.5x</div>
+            </div>
+            <div
+              class="playback-speed-item group flex flex-col items-center cursor-pointer w-1/5 text-center transition-transform duration-75 hover:scale-105"
+              role="button" tabindex="0" data-speed="0.75">
+              <div
+                class="speed-circle w-4 h-4 rounded-full bg-gray-500 relative transition-all duration-200 group-hover:bg-gray-400">
+              </div>
+              <div
+                class="speed-label text-sm text-gray-400 mt-4 w-full transition-colors duration-200 group-hover:text-gray-300">
+                0.75x</div>
+            </div>
+            <div
+              class="playback-speed-item group flex flex-col items-center cursor-pointer active w-1/5 text-center transition-transform duration-75 hover:scale-105"
+              role="button" tabindex="0" data-speed="1">
+              <div class="speed-circle w-4 h-4 rounded-full bg-white relative transition-all duration-200"></div>
+              <div class="speed-label text-sm text-white font-bold mt-4 w-full transition-colors duration-200">1x
+                (Normal)</div>
+            </div>
+            <div
+              class="playback-speed-item group flex flex-col items-center cursor-pointer w-1/5 text-center transition-transform duration-75 hover:scale-105"
+              role="button" tabindex="0" data-speed="1.25">
+              <div
+                class="speed-circle w-4 h-4 rounded-full bg-gray-500 relative transition-all duration-200 group-hover:bg-gray-400">
+              </div>
+              <div
+                class="speed-label text-sm text-gray-400 mt-4 w-full transition-colors duration-200 group-hover:text-gray-300">
+                1.25x</div>
+            </div>
+            <div
+              class="playback-speed-item group flex flex-col items-center cursor-pointer w-1/5 text-center transition-transform duration-75 hover:scale-105"
+              role="button" tabindex="0" data-speed="1.5">
+              <div
+                class="speed-circle w-4 h-4 rounded-full bg-gray-500 relative transition-all duration-200 group-hover:bg-gray-400">
+              </div>
+              <div
+                class="speed-label text-sm text-gray-400 mt-4 w-full transition-colors duration-200 group-hover:text-gray-300">
+                1.5x</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop Resolution Selector -->
+      <div id="playback-res-wrapper" class="desktop-only absolute p-4 bottom-28 right-0 hidden" role="button">
+      </div>
+
+
+    </div>
+
+  </div>
+
+  <script type="module" src="../dist/script.js"></script>
+
+
+
+</body>
+
+</html>
